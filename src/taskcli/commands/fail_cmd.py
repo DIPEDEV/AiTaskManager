@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 
 from taskcli.store import TaskStore, StoreError
@@ -7,10 +9,10 @@ from taskcli.store import TaskStore, StoreError
 console = Console()
 
 
-def run(task_id: int, message: str, agent_type: str = "debug") -> None:
+def run(task_id: int, message: str, agent_type: str = "debug", root: Path | None = None) -> None:
     """Mark debug verification as failed. Creates new coder task with feedback."""
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError as e:
         console.print(f"[red]Error: {e}[/red]")
         return

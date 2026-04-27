@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
@@ -12,7 +13,7 @@ from taskcli.store import TaskStore, StoreError
 console = Console()
 
 
-def run(command: list[str]) -> None:
+def run(command: list[str], root: Path | None = None) -> None:
     """Execute a command and capture errors as debug tasks.
 
     Usage: task --debug <command...>
@@ -33,7 +34,7 @@ def run(command: list[str]) -> None:
         )
     except subprocess.TimeoutExpired:
         console.print("[red]Command timed out after 120s[/red]")
-        _add_debug_task(command, "", "Command timed out after 120 seconds")
+        _add_debug_task(command, "", "Command timed out after 120 seconds", root=root)
         return
     except FileNotFoundError:
         console.print(f"[red]Command not found: {command[0]}[/red]")
@@ -58,6 +59,7 @@ def run(command: list[str]) -> None:
             error_info["file"],
             error_info["message"],
             error_info["line"],
+            root=root,
         )
 
         panel_content = "\n".join([
@@ -107,10 +109,11 @@ def _add_debug_task(
     file: str,
     message: str,
     line: int = 0,
+    root: Path | None = None,
 ) -> Task:
     """Add a debug task for a failed command."""
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError:
         console.print("[red]No .tasks directory found. Run 'task init' first.[/red]")
         sys.exit(1)

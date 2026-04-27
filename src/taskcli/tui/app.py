@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual import on
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll, Container
@@ -193,9 +195,9 @@ class AddTaskScreen(ModalScreen[Task]):
             yield Label("Specification (optional)")
             yield Input(placeholder="Multi-line context for the AI...", id="task-spec")
             with Horizontal():
-                yield Button("✓ Create", variant="primary", id="btn-create")
-                yield Button("✗ Cancel", variant="error", id="btn-cancel")
-            yield Label("[dim]Ctrl+S to create  •  Esc to cancel  •  Tab to navigate[/dim]")
+                yield Button("Create Task", variant="primary", id="btn-create")
+                yield Button("Cancel", variant="error", id="btn-cancel")
+            yield Label("[dim]Ctrl+S to create  •  Esc to cancel[/dim]")
 
     def on_mount(self) -> None:
         self.query_one("#task-title", Input).focus()
@@ -264,6 +266,23 @@ class AddTaskScreen(ModalScreen[Task]):
         self.dismiss(None)
 
 
+class KanbanColumn(Vertical):
+    def __init__(self, status_key: str, header: str, store: TaskStore, agent_type: str):
+        super().__init__(classes="kanban-column")
+        self.status_key = status_key
+        self.header = header
+        self.store = store
+        self.agent_type = agent_type
+
+    def render(self) -> None:
+        self.clear()
+        self.mount(Static(self.header, classes="kanban-header"))
+        status = TaskStatus(self.status_key)
+        tasks = [t for t in self.store.load(self.agent_type) if t.status == status]
+        for task in tasks:
+            self.mount(TaskListItem(task.id, Static(f"{task.status_icon} {task.title[:40]}", classes="kanban-task")))
+
+
 class TaskTUI(App):
     """Interactive TUI for task management."""
 
@@ -301,6 +320,25 @@ class TaskTUI(App):
         color: $text;
         height: auto;
     }
+    #kanban-container {
+        width: 100%;
+        height: 100%;
+    }
+    .kanban-column {
+        width: 25%;
+        height: 100%;
+        border: solid $primary;
+    }
+    .kanban-header {
+        height: 3;
+        background: $primary;
+        text-style: bold;
+        padding: 0 1;
+    }
+    .kanban-task {
+        padding: 0 1;
+        margin: 0 0 1 0;
+    }
     """
 
     BINDINGS = [
@@ -310,13 +348,15 @@ class TaskTUI(App):
         ("f", "fail_debug", "Fail (re-create)"),
         ("a", "add_task", "Add Task"),
         ("tab", "switch_agent", "Switch Agent"),
+        ("k", "toggle_kanban", "Kanban"),
         ("q", "quit", "Quit"),
     ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, root: Path | None = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._kanban_visible = False
         try:
-            self.store = TaskStore()
+            self.store = TaskStore(root) if root else TaskStore()
         except StoreError:
             self.store = None
         if self.store:
@@ -461,7 +501,7 @@ class TaskTUI(App):
 
         if agent and agent.pipeline_to:
             result = self.store.task_done_with_pipeline(task.agent_type, task.id)
-            self.notify(f"Sent to {agent.pipeline_to} → task {result.id}", title="Done")
+            self.notify(f"Sent to {agent.pipeline_to} -> task {result.id}", title="Done")
         else:
             self.store.update(task.agent_type, task.id, status=TaskStatus.DONE)
             self.notify(f"Task {task.id} marked done", title="Done")
@@ -476,7 +516,7 @@ class TaskTUI(App):
             return
         if task.coder_ref:
             d, _ = self.store.task_pass_verify(task.id, task.agent_type)
-            self.notify(f"Verification passed ✓", title="Pass")
+            self.notify(f"Verification passed", title="Pass")
             self._refresh()
         else:
             self.notify("Only verification tasks with coder_ref can be passed", title="Warning", severity="warning")
@@ -490,7 +530,7 @@ class TaskTUI(App):
             return
         if task.coder_ref:
             new_task = self.store.task_fail_verify(task.id, "Verification failed from TUI", task.agent_type)
-            self.notify(f"Re-created in {new_task.agent_type} → task {new_task.id}", title="Fail")
+            self.notify(f"Re-created in {new_task.agent_type} -> task {new_task.id}", title="Fail")
             self._refresh()
         else:
             self.notify("Only verification tasks with coder_ref can be failed", title="Warning", severity="warning")
@@ -505,7 +545,50 @@ class TaskTUI(App):
         except Exception:
             pass
 
+    def action_toggle_kanban(self) -> None:
+        """Toggle between list view and kanban view."""
+        if not self.store:
+            return
 
-def run_tui() -> None:
-    app = TaskTUI()
+        if self._kanban_visible:
+            self._switch_to_list()
+        else:
+            self._switch_to_kanban()
+
+    def _switch_to_kanban(self) -> None:
+        main = self.query_one("#main-layout")
+        main.display = "none"
+
+        columns = [
+            ("pending", "○ Pending"),
+            ("in_progress", "◉ In Progress"),
+            ("needs_verification", "◇ Needs Verification"),
+            ("done", "✓ Done"),
+        ]
+        container = Horizontal(id="kanban-container")
+        self.mount(container)
+        for status_key, header in columns:
+            col = KanbanColumn(status_key, header, self.store, self.current_agent)
+            col.render()
+            container.mount(col)
+
+        self._kanban_visible = True
+        self.notify("Kanban view (press k to return to list)")
+
+    def _switch_to_list(self) -> None:
+        try:
+            kanban = self.query_one("#kanban-container")
+            kanban.remove()
+        except Exception:
+            pass
+
+        main = self.query_one("#main-layout")
+        main.display = "flex"
+
+        self._kanban_visible = False
+        self.notify("List view")
+
+
+def run_tui(root: Path | None = None) -> None:
+    app = TaskTUI(root=root)
     app.run()

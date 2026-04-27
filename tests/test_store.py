@@ -161,3 +161,59 @@ def test_store_error_no_tasks_dir():
 def test_store_unknown_agent(store):
     with pytest.raises(StoreError):
         store.load("nonexistent_agent")
+
+
+def test_store_list_by_section(store):
+    store.add("coder", Task(id=0, title="Work task", section="work"))
+    store.add("coder", Task(id=0, title="Personal task", section="personal"))
+    store.add("coder", Task(id=0, title="No section task"))
+
+    work_tasks = store.list_tasks("coder", section="work")
+    assert len(work_tasks) == 1
+    assert work_tasks[0].title == "Work task"
+
+    personal_tasks = store.list_tasks("coder", section="personal")
+    assert len(personal_tasks) == 1
+    assert personal_tasks[0].title == "Personal task"
+
+    empty_section_tasks = store.list_tasks("coder", section="")
+    assert len(empty_section_tasks) == 1
+    assert empty_section_tasks[0].title == "No section task"
+
+
+def test_store_list_all_agents_section_filter(store):
+    store.add("coder", Task(id=0, title="Coder work", section="work"))
+    store.add("debug", Task(id=0, title="Debug work", section="work"))
+    store.add("coder", Task(id=0, title="Coder personal", section="personal"))
+
+    work_tasks = store.list_tasks(section="work")
+    assert len(work_tasks) == 2
+    titles = {t.title for t in work_tasks}
+    assert "Coder work" in titles
+    assert "Debug work" in titles
+
+
+def test_store_set_section(store):
+    store.add("coder", Task(id=0, title="To update"))
+    result = store.set_section("coder", 1, "docs")
+
+    assert result is not None
+    assert result.section == "docs"
+
+    got = store.get("coder", 1)
+    assert got.section == "docs"
+
+
+def test_store_set_section_not_found(store):
+    result = store.set_section("coder", 999, "docs")
+    assert result is None
+
+
+def test_store_list_sections(store):
+    store.add("coder", Task(id=0, title="T1", section="backend"))
+    store.add("coder", Task(id=0, title="T2", section="frontend"))
+    store.add("coder", Task(id=0, title="T3", section="backend"))
+    store.add("coder", Task(id=0, title="T4"))
+
+    sections = store.list_sections("coder")
+    assert set(sections) == {"backend", "frontend"}

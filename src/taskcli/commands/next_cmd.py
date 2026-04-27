@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 from rich.panel import Panel
 
@@ -8,10 +10,10 @@ from taskcli.store import TaskStore, StoreError
 console = Console()
 
 
-def run(agent_type: str = "coder") -> None:
+def run(agent_type: str = "coder", root: Path | None = None, short: bool = False) -> None:
     """Get the next pending task and mark it in_progress."""
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
@@ -19,7 +21,16 @@ def run(agent_type: str = "coder") -> None:
     task = store.get_next(agent_type, mark_in_progress=True)
 
     if task is None:
-        console.print(f"[dim]No pending tasks for {agent_type}[/dim]")
+        if short:
+            console.print(f"[dim]{agent_type}: no tasks[/dim]")
+        else:
+            console.print(f"[dim]No pending tasks for {agent_type}[/dim]")
+        return
+
+    if short:
+        title = task.title[:50] + ("..." if len(task.title) > 50 else "")
+        priority = task.priority[0].upper() if task.priority else "?"
+        console.print(f"[{priority}] [{agent_type}] {title}")
         return
 
     lines = [

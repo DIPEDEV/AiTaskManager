@@ -71,3 +71,82 @@ tests/
 - Generic pipeline methods (`task_done_with_pipeline`, `task_pass_verify`, `task_fail_verify`) over hardcoded agent names
 - Legacy methods (`task_done_coder`, `task_pass_debug`, `task_fail_debug`) delegate to generic versions
 - `install.sh` auto-detects OS and installs the `task` CLI command
+
+## Global Mode (`--global` / `-g`)
+
+Most commands support `-g` / `--global` to operate on the global `~/.tasks` store instead of the local `.tasks/` directory:
+
+```bash
+task list -g              # List tasks from global store
+task next -t coder -g     # Get next coder task from global
+task add "Quick idea" -g   # Add task to global store
+```
+
+The global store is at `~/.tasks` (configurable via `TASKCLI_GLOBAL_ROOT` env var).
+
+## Sections
+
+Tasks support a `--section` / `-S` flag to group them:
+
+```bash
+task add "Fix auth bug" -S bugfix -t coder
+task add "Refactor API" -S refactor -t coder
+task list -S bugfix      # Filter by section
+```
+
+Sections are free-form strings. Use them to organize tasks by theme, project, or workflow stage.
+
+## MCP Server (`task mcp`)
+
+The CLI includes an MCP (Model Context Protocol) stdio server for integration with AI tools like Claude Desktop.
+
+```bash
+task mcp                     # Start server (scope: global)
+task mcp --scope project     # Use project .tasks/ instead of ~/.tasks
+task mcp --scope auto        # Auto-detect (project if found, else global)
+```
+
+### Claude Desktop Integration
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "taskcli": {
+      "command": "task",
+      "args": ["mcp", "--scope", "global"]
+    }
+  }
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `task_list` | List tasks with optional filters (agent_type, status, section) |
+| `task_add` | Add a new task |
+| `task_show` | Show a single task by ID |
+| `task_next` | Get the next pending task |
+| `task_done` | Complete a task (pipelines to verification) |
+| `task_verify_pass` | Pass verification |
+| `task_verify_fail` | Fail verification with reason |
+| `task_set_section` | Set task section |
+| `task_move` | Move task between agents |
+| `task_dispatch` | Dispatch a Claude subagent to work on a task |
+| `agent_list` | List all configured agents |
+| `section_list` | List sections for an agent |
+
+### Available MCP Resources
+
+```
+tasks://{agent}              # Tasks for an agent
+tasks://{agent}/{section}    # Tasks in a section
+tasks://config               # Agent configuration
+prompt://start-day           # Start day routine prompt
+prompt://review-work         # Review work section prompt
+prompt://triage-inbox        # Triage inbox prompt
+prompt://standup             # Daily standup prompt
+subscribe://tasks/{agent}    # Subscribe to task changes
+```

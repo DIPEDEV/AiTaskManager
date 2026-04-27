@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 
 from taskcli.config import get_agent
@@ -9,7 +11,7 @@ from taskcli.store import TaskStore, StoreError
 console = Console()
 
 
-def run(task_id: int, agent_type: str) -> None:
+def run(task_id: int, agent_type: str, root: Path | None = None) -> None:
     """Mark a task as done.
 
     For agents with pipeline_to: transitions to target for verification.
@@ -17,7 +19,7 @@ def run(task_id: int, agent_type: str) -> None:
     For agents without pipeline: marks task as done.
     """
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError as e:
         console.print(f"[red]Error: {e}[/red]")
         return

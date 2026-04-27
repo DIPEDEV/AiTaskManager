@@ -23,9 +23,20 @@ class Task:
     line: int = 0
     created: str = ""
     agent_type: str = "coder"
+    section: str = ""
     coder_ref: int = 0
     debug_ref: int = 0
     source_agent: str = ""
+    parent_id: int = 0
+    blocked_by: list[int] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    due: str = ""
+    recur: str = ""
+    estimate_min: int = 0
+    actual_min: int = 0
+    started_at: str = ""
+    finished_at: str = ""
+    attachments: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         if not self.created:

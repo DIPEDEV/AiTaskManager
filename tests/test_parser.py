@@ -138,6 +138,44 @@ def test_roundtrip():
     assert p.debug_ref == task.debug_ref
 
 
+def test_roundtrip_with_section():
+    task = Task(
+        id=7,
+        title="Section test",
+        section="personal",
+        coder_ref=1,
+    )
+    formatted = format_task(task)
+    assert "section: personal" in formatted
+    parsed = parse_tasks(formatted)
+    assert len(parsed) == 1
+    assert parsed[0].section == "personal"
+
+
+def test_parse_missing_section_defaults_empty():
+    content = """--- task:1
+status: pending
+title: No section set
+spec:
+---
+"""
+    tasks = parse_tasks(content)
+    assert len(tasks) == 1
+    assert tasks[0].section == ""
+
+
+def test_format_empty_section_omitted():
+    task = Task(id=1, title="No section", section="")
+    output = format_task(task)
+    assert "section:" not in output
+
+
+def test_format_nonempty_section_emitted():
+    task = Task(id=1, title="With section", section="work")
+    output = format_task(task)
+    assert "section: work" in output
+
+
 def test_task_status_icon():
     assert Task(id=1, title="t", status=TaskStatus.PENDING).status_icon == "○"
     assert Task(id=1, title="t", status=TaskStatus.IN_PROGRESS).status_icon == "◉"

@@ -1,2 +1,3 @@
 [console_scripts]
 task = taskcli.main:entry
+task-mcp = taskcli.mcp_server:main

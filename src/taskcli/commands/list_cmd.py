@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 from rich.table import Table
 
@@ -13,10 +15,13 @@ def run(
     agent_type: str = "",
     status: str = "",
     all_agents: bool = False,
+    section: str = "",
+    tag: str = "",
+    root: Path | None = None,
 ) -> None:
     """List tasks with optional filters."""
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
@@ -39,7 +44,7 @@ def run(
     total = 0
     for agent in agents:
         try:
-            tasks = store.list_tasks(agent, status_filter)
+            tasks = store.list_tasks(agent, status_filter, section if section else None, tag if tag else None)
         except StoreError:
             continue
 

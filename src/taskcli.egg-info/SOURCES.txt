@@ -1,7 +1,9 @@
+LICENSE
 pyproject.toml
 src/taskcli/__init__.py
 src/taskcli/config.py
 src/taskcli/main.py
+src/taskcli/mcp_server.py
 src/taskcli/models.py
 src/taskcli/parser.py
 src/taskcli/store.py
@@ -19,6 +21,7 @@ src/taskcli/commands/done.py
 src/taskcli/commands/fail_cmd.py
 src/taskcli/commands/init.py
 src/taskcli/commands/list_cmd.py
+src/taskcli/commands/mcp_cmd.py
 src/taskcli/commands/next_cmd.py
 src/taskcli/commands/pass_cmd.py
 src/taskcli/commands/show_cmd.py

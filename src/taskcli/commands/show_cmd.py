@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from rich.console import Console
 from rich.panel import Panel
 
@@ -8,10 +10,10 @@ from taskcli.store import TaskStore, StoreError
 console = Console()
 
 
-def run(task_id: int, agent_type: str = "coder") -> None:
+def run(task_id: int, agent_type: str = "coder", root: Path | None = None) -> None:
     """Show full task details including spec."""
     try:
-        store = TaskStore()
+        store = TaskStore(root) if root else TaskStore()
     except StoreError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
@@ -29,6 +31,9 @@ def run(task_id: int, agent_type: str = "coder") -> None:
         f"[bold]Agent:[/bold]      {task.agent_type}",
         f"[bold]Created:[/bold]    {task.created[:19] if task.created else 'N/A'}",
     ]
+
+    if task.section:
+        lines.append(f"[bold]Section:[/bold]    {task.section}")
 
     if task.file:
         loc = f"         {task.file}"

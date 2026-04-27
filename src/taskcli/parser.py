@@ -67,6 +67,10 @@ def _parse_task_block(block: str) -> Task | None:
         fields[current_field] = "\n".join(spec_lines)
 
     try:
+        blocked_str = fields.get("blocked_by", "")
+        blocked_by = [int(x.strip()) for x in blocked_str.split(",") if blocked_str.strip()]
+        tags_str = fields.get("tags", "")
+        tags = [x.strip() for x in tags_str.split(",") if tags_str.strip()]
         return Task(
             id=fields["id"],
             title=fields.get("title", ""),
@@ -77,9 +81,20 @@ def _parse_task_block(block: str) -> Task | None:
             line=int(fields.get("line", 0)),
             created=fields.get("created", ""),
             agent_type=fields.get("agent_type", "coder"),
+            section=fields.get("section", ""),
             coder_ref=int(fields.get("coder_ref", 0)),
             debug_ref=int(fields.get("debug_ref", 0)),
             source_agent=fields.get("source_agent", ""),
+            parent_id=int(fields.get("parent_id", 0)),
+            blocked_by=blocked_by,
+            tags=tags,
+            due=fields.get("due", ""),
+            recur=fields.get("recur", ""),
+            estimate_min=int(fields.get("estimate_min", 0)),
+            actual_min=int(fields.get("actual_min", 0)),
+            started_at=fields.get("started_at", ""),
+            finished_at=fields.get("finished_at", ""),
+            attachments=[x.strip() for x in fields.get("attachments", "").split(",") if x.strip()],
         )
     except (KeyError, ValueError):
         return None
@@ -107,12 +122,34 @@ def format_task(task: Task) -> str:
         lines.append(f"created: {task.created}")
     if task.agent_type:
         lines.append(f"agent_type: {task.agent_type}")
+    if task.section:
+        lines.append(f"section: {task.section}")
     if task.coder_ref:
         lines.append(f"coder_ref: {task.coder_ref}")
     if task.debug_ref:
         lines.append(f"debug_ref: {task.debug_ref}")
     if task.source_agent:
         lines.append(f"source_agent: {task.source_agent}")
+    if task.parent_id:
+        lines.append(f"parent_id: {task.parent_id}")
+    if task.blocked_by:
+        lines.append(f"blocked_by: {','.join(str(x) for x in task.blocked_by)}")
+    if task.tags:
+        lines.append(f"tags: {','.join(task.tags)}")
+    if task.due:
+        lines.append(f"due: {task.due}")
+    if task.recur:
+        lines.append(f"recur: {task.recur}")
+    if task.estimate_min:
+        lines.append(f"estimate_min: {task.estimate_min}")
+    if task.actual_min:
+        lines.append(f"actual_min: {task.actual_min}")
+    if task.started_at:
+        lines.append(f"started_at: {task.started_at}")
+    if task.finished_at:
+        lines.append(f"finished_at: {task.finished_at}")
+    if task.attachments:
+        lines.append(f"attachments: {','.join(task.attachments)}")
 
     lines.append("---")
     return "\n".join(lines)

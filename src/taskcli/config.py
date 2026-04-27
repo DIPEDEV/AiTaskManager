@@ -5,6 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from typing import Literal
+
 from taskcli.models import AgentConfig, DEFAULT_AGENTS
 
 CONFIG_DIR = ".tasks"
@@ -69,6 +71,120 @@ def get_pipeline_target(agent: AgentConfig, agents: list[AgentConfig] | None = N
     if not agent.pipeline_to:
         return None
     return get_agent(agent.pipeline_to, agents)
+
+
+def find_global_root() -> Path:
+    """Return global tasks root honoring TASKCLI_GLOBAL_ROOT or ~/.tasks."""
+    env_root = os.environ.get("TASKCLI_GLOBAL_ROOT", "")
+    if env_root:
+        root = Path(env_root).expanduser().resolve()
+    else:
+        root = Path.home() / ".tasks"
+
+    if not root.exists():
+        root.mkdir(parents=True, exist_ok=True)
+        write_default_config(root)
+
+    return root
+
+
+def get_storage_backend(path: Path | None = None) -> str:
+    """Read storage backend type from config. Defaults to 'plaintext'."""
+    data = _read_config(path)
+    return data.get("storage_backend", "plaintext")
+
+
+def get_git_sync_enabled(path: Path | None = None) -> bool:
+    """Read git sync enabled from config. Defaults to False."""
+    data = _read_config(path)
+    return data.get("git_sync", False)
+
+
+def set_git_sync_enabled(enabled: bool, path: Path | None = None) -> None:
+    """Enable or disable git sync in config."""
+    config_path = path or get_config_path()
+    if config_path is None:
+        return
+    data = {}
+    if config_path.exists():
+        with open(config_path) as f:
+            data = yaml.safe_load(f.read()) or {}
+    data["git_sync"] = enabled
+    with open(config_path, "w") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True)
+
+
+def get_telemetry_enabled(path: Path | None = None) -> bool:
+    """Read telemetry opt-in from config. Defaults to False."""
+    data = _read_config(path)
+    return data.get("telemetry", False)
+
+
+def set_telemetry_enabled(enabled: bool, path: Path | None = None) -> None:
+    """Enable or disable telemetry in config."""
+    config_path = path or get_config_path()
+    if config_path is None:
+        return
+    data = {}
+    if config_path.exists():
+        with open(config_path) as f:
+            data = yaml.safe_load(f.read()) or {}
+    data["telemetry"] = enabled
+    with open(config_path, "w") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True)
+
+
+def _read_config(path: Path | None = None) -> dict:
+    """Read config as dict, returning empty dict if not found."""
+    config_path = path or get_config_path()
+    if config_path is None or not config_path.exists():
+        return {}
+    with open(config_path) as f:
+        return yaml.safe_load(f.read()) or {}
+
+
+def get_hooks(agent_type: str, path: Path | None = None) -> dict[str, list[str]]:
+    """Read hooks for an agent from config. Returns dict of event -> list of commands."""
+    data = _read_config(path)
+    agents_data = data.get("agents", {})
+    agent_data = agents_data.get(agent_type, {})
+    return agent_data.get("hooks", {})
+
+
+def set_hooks(agent_type: str, hooks: dict[str, list[str]], path: Path | None = None) -> None:
+    """Set hooks for an agent in config."""
+    config_path = path or get_config_path()
+    if config_path is None:
+        return
+    data = {}
+    if config_path.exists():
+        with open(config_path) as f:
+            data = yaml.safe_load(f.read()) or {}
+    if "agents" not in data:
+        data["agents"] = {}
+    if agent_type not in data["agents"]:
+        data["agents"][agent_type] = {}
+    data["agents"][agent_type]["hooks"] = hooks
+    with open(config_path, "w") as f:
+        yaml.safe_dump(data, f, default_flow_style=False, allow_unicode=True)
+
+
+def resolve_root(scope: Literal["project", "global", "auto"] = "auto") -> Path:
+    """Resolve tasks root based on scope.
+
+    - project: return project root or raise
+    - global: always return global root
+    - auto: project root if found, else global
+    """
+    if scope == "global":
+        return find_global_root()
+    if scope == "project":
+        root = find_tasks_root()
+        if root is None:
+            raise FileNotFoundError("No .tasks directory found in project tree")
+        return root
+    # auto
+    return find_tasks_root() or find_global_root()
 
 
 def write_default_config(tasks_root: Path) -> None:
