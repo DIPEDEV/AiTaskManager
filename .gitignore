@@ -1,0 +1,5 @@
+.tasks/
+.claude/
+__pycache__/
+*.pyc
+*.egg-info/
